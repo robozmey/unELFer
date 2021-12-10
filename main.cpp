@@ -6,7 +6,7 @@ int main(int argc, char *argv[]) {
     char* in_name = "strongC";
     char* out_file = "disassembled.txt";
     if (argc != 3) return 1;
-    //in_name = argv[1];
+   // in_name = argv[1];
     //out_file = argv[2];
 
     std::ifstream elf_file(in_name); //HelloWorld-AMDx86
@@ -43,12 +43,45 @@ int main(int argc, char *argv[]) {
 
 
     // Get .text
-   // RV32_command
+   // command_t
     Elf32_Half text_length = text_header.sh_size / sizeof(RV16_command);
     RV16_command text[text_length];
     //load_text(elf_file, text_header, text);
     elf_file.seekg(text_header.sh_offset, std::ios::beg);
     elf_file.read((char*)&text, text_header.sh_size);
+
+    // Get unnamed labels
+    std::vector <command_t> jumps;
+    for (int text_index = 0; text_index < text_length; text_index++) {
+        Elf32_Off com_off = text_header.sh_addr + text_index * sizeof(RV16_command);
+        command_t command = text[text_index];
+        std::string command_name = "unknown_command!";
+
+        if (command % 4 == 0b11) {
+            command = (((command_t)text[++text_index]) << 16) + (command);
+            command_name = get_command32_name(command);
+            std::set<std::string> jump_commands = {"jal", "beq", "bne", "btl", "bge", "btlu", "bgeu"};
+            if (jump_commands.count(command_name)) {
+                jumps.push_back(com_off + get_command32_imma(command));
+            }
+        } else {
+            command_name = get_command16_name(command);
+            std::set<std::string> jump_commands = {"c.j", "c.jal", "c.bnez", "c.beqz"};
+            if (jump_commands.count(command_name)) {
+                jumps.push_back(com_off + get_command16_imma(command));
+            }
+        }
+    }
+
+    int k = 0;
+    for (int jump_index = 0; jump_index < jumps.size(); jump_index++) {
+        if (!text_labels.count(jumps[jump_index])) {
+            char buff[20];
+            snprintf(buff, sizeof(buff), "LOC_%05x", k++);
+            std::string buffAsStdStr = buff;
+            text_labels[jumps[jump_index]] = buffAsStdStr;
+        }
+    }
 
 
     freopen (out_file,"w",stdout);
@@ -56,7 +89,7 @@ int main(int argc, char *argv[]) {
     printf(".text\n");
     for (int text_index = 0; text_index < text_length; text_index++) {
         Elf32_Off com_off = text_header.sh_addr + text_index * sizeof(RV16_command);
-        RV32_command command = text[text_index];
+        command_t command = text[text_index];
 
         std::string label;  if (text_labels.count(com_off)) label = text_labels[com_off];
         std::string command_name = "unknown_command!";
@@ -65,7 +98,7 @@ int main(int argc, char *argv[]) {
         std::string s3 = "shlyopa";
 
         if (command % 4 == 0b11) {
-            command = (((RV32_command)text[++text_index])<<16) + (command);
+            command = (((command_t)text[++text_index]) << 16) + (command);
             command_name = get_command32_name(command);
             s1 = get_command32_s1(command);
             s2 = get_command32_s2(command);
@@ -76,8 +109,7 @@ int main(int argc, char *argv[]) {
             if (command_name == "unknown_command") {
                 printf("%08x %10s: %s\n", com_off, label.c_str(), command_name.c_str());
             } else if (read_store.count(command_name)) {
-                printf("%08x %10s: %s %s, %s(%s)\n", com_off, label.c_str(), command_name.c_str(), s1.c_str(),
-                       s3.c_str(), s2.c_str());
+                printf("%08x %10s: %s %s, %s(%s)\n", com_off, label.c_str(), command_name.c_str(), s1.c_str(), s3.c_str(), s2.c_str());
             } else if (get_command32_type(command) == 'U' || get_command32_type(command) == 'J') {
                 printf("%08x %10s: %s %s, %s\n", com_off, label.c_str(), command_name.c_str(), s1.c_str(), s2.c_str());
             } else {
@@ -92,15 +124,14 @@ int main(int argc, char *argv[]) {
             s3 = get_command16_s3(command);
 
             std::set<std::string> read_store = {"c.lw", "c.sw"};
-            std::set<std::string> no_param = {"c.ebreak"};
+            std::set<std::string> no_param = {"c.ebreak", "c.nop"};
             std::set<std::string> one_param = {"c.j", "c.jal", "c.jr", "c.jalr"};
             std::set<std::string> two_param = {"c.li", "c.lui", "c.bnez", "c.beqz", "c.lwsp", "c.swsp"};
 
             if (command_name == "unknown_command") {
                 printf("%08x %10s: %s\n", com_off, label.c_str(), command_name.c_str());
             } else if (read_store.count(command_name)) {
-                printf("%08x %10s: %s %s, %s(%s)\n", com_off, label.c_str(), command_name.c_str(), s1.c_str(),
-                       s3.c_str(), s2.c_str());
+                printf("%08x %10s: %s %s, %s(%s)\n", com_off, label.c_str(), command_name.c_str(), s1.c_str(), s3.c_str(), s2.c_str());
             } else if (no_param.count(command_name)) {
                 printf("%08x %10s: %s\n", com_off, label.c_str(), command_name.c_str());
             } else if (one_param.count(command_name)) {
@@ -112,10 +143,6 @@ int main(int argc, char *argv[]) {
                        s2.c_str(), s3.c_str());
             }
         }
-     //   printf("%08x\n", command);
-
-
-
     }
     printf("\n");
     printf(".symtab\n");

@@ -3,29 +3,31 @@
 
 #include "elf.h"
 
-char get_command32_type(RV32_command);
+char get_command32_type(command_t);
 
-std::string get_command32_name(RV32_command command);
-std::string get_command32_s1(RV32_command command);
-std::string get_command32_s2(RV32_command command);
-std::string get_command32_s3(RV32_command command);
+std::string get_command32_name(command_t command);
+std::string get_command32_s1(command_t command);
+std::string get_command32_s2(command_t command);
+std::string get_command32_s3(command_t command);
 
-RV32_command get32_opcode(RV32_command command);
-RV32_command get32_rd(RV32_command command) ;
-RV32_command get32_funct3(RV32_command command);
-RV32_command get32_rs1(RV32_command command);
-RV32_command get32_rs2(RV32_command command) ;
-RV32_command get32_funct7(RV32_command command);
+command_t get32_opcode(command_t command);
+command_t get32_rd(command_t command) ;
+command_t get32_funct3(command_t command);
+command_t get32_rs1(command_t command);
+command_t get32_rs2(command_t command) ;
+command_t get32_funct7(command_t command);
 
-std::string get_command32_rd(RV32_command command);
-std::string get_command32_rs1(RV32_command command);
-std::string get_command32_rs2(RV32_command command);
+std::string get_command32_rd(command_t command);
+std::string get_command32_rs1(command_t command);
+std::string get_command32_rs2(command_t command);
 
-std::string get_command32_immaI(RV32_command command);
-std::string get_command32_immaS(RV32_command command);
-std::string get_command32_immaU(RV32_command command);
-std::string get_command32_immaJ(RV32_command command);
-std::string get_command32_immaB(RV32_command command);
+std::string get_command32_immaI(command_t command);
+std::string get_command32_immaS(command_t command);
+std::string get_command32_immaU(command_t command);
+std::string get_command32_immaJ(command_t command);
+std::string get_command32_immaB(command_t command);
+
+imma_t get_command32_imma(command_t command);
 
 enum command16_type {
     CR,
@@ -83,11 +85,12 @@ enum command16_name {
     c_swsp
 };
 
-std::string get_command16_name(RV32_command command);
-//command16_type get_command16_type(RV32_command command);
+std::string get_command16_name(command_t command);
+//command16_type get_command16_type(command_t command);
+imma_t get_command16_imma(command_t command);
 
-std::string get_command16_s1(RV16_command command);
-std::string get_command16_s2(RV16_command command);
-std::string get_command16_s3(RV16_command command);
+std::string get_command16_s1(command_t command);
+std::string get_command16_s2(command_t command);
+std::string get_command16_s3(command_t command);
 
 #endif //UNELFER_DISASSEMBLER_H

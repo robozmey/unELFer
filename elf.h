@@ -55,8 +55,9 @@ typedef struct {
     Elf32_Half      st_shndx;
 } Elf32_Sym;
 
-typedef uint32_t RV32_command;
+typedef uint64_t command_t;
 typedef uint16_t RV16_command;
+typedef int32_t imma_t;
 
 std::string get_name(char* c);
 
@@ -76,7 +77,7 @@ std :: vector < std :: string > get_st_names(Elf32_Shdr& symtab_header, Elf32_Sy
 
 std::map <Elf32_Off, std::string> get_text_labels(Elf32_Sym* symtab, std :: vector < std :: string >& st_names);
 
-void load_text(std::ifstream& elf_file, Elf32_Shdr& text_header, RV32_command* text);
+void load_text(std::ifstream& elf_file, Elf32_Shdr& text_header, command_t* text);
 
 char* get_sym_type(Elf32_Sym& sym);
 

@@ -79,7 +79,7 @@ std::map <Elf32_Off, std::string> get_text_labels(Elf32_Sym* symtab, std :: vect
     return text_labels;
 }
 
-void load_text(std::ifstream& elf_file, Elf32_Shdr& text_header, RV32_command* text) {
+void load_text(std::ifstream& elf_file, Elf32_Shdr& text_header, command_t* text) {
     elf_file.seekg(text_header.sh_offset, std::ios::beg);
     elf_file.read((char*)&text, text_header.sh_size);
 }
