@@ -1,26 +1,26 @@
 #include "disassembler.h"
 
-RV32_command get_opcode(RV32_command command) {
+RV32_command get32_opcode(RV32_command command) {
     return command % (1 << 7); /// opcode - 6 - 0
 }
 
-RV32_command get_rd(RV32_command command) {
+RV32_command get32_rd(RV32_command command) {
     return (command >> 7) % (1 << 5);  /// rd - 11 - 7
 }
 
-RV32_command get_funct3(RV32_command command) {
+RV32_command get32_funct3(RV32_command command) {
     return (command >> 12) % (1 << 3);  /// funct3 - 14 - 12
 }
 
-RV32_command get_rs1(RV32_command command) {
+RV32_command get32_rs1(RV32_command command) {
     return (command >> 15) % (1 << 5);  /// rs1 - 19 - 15
 }
 
-RV32_command get_rs2(RV32_command command) {
+RV32_command get32_rs2(RV32_command command) {
     return (command >> 20) % (1 << 5);  /// rs1 - 24 - 20
 }
 
-RV32_command get_funct7(RV32_command command) {
+RV32_command get32_funct7(RV32_command command) {
     return (command >> 25) % (1 << 7);  /// funct3 - 31 - 25
 }
 
@@ -39,14 +39,19 @@ std::map <Elf32_Word, char > command32_types_by_opcode = {{0b11, 'I'},
                                                           {0b1110011, 'I'}};
 
 char get_command32_type(RV32_command command) {
-    return command32_types_by_opcode[get_opcode(command)];
+    return command32_types_by_opcode[get32_opcode(command)];
 }
 
 std::string get_command32_name(RV32_command command) {
     char command_type = get_command32_type(command);
-    auto opcode = get_opcode(command);
-    auto funct3 = get_funct3(command);
-    auto funct7 = get_funct7(command);
+    auto opcode = get32_opcode(command);
+    auto funct3 = get32_funct3(command);
+    auto funct7 = get32_funct7(command);
+
+    auto error_128 = "128_command32";
+    auto error_f = "float_comand32";
+    auto error_r = "reserved_comand32";
+    auto error_u = "unknown_comand32";
 
     switch (command_type) {
         case 'I': {
@@ -61,14 +66,14 @@ std::string get_command32_name(RV32_command command) {
                         case 0b101: return "lhu";      //RV32I
                         case 0b110: return "lwu";
                     }
-                } break;
+                } return error_u;
                 case 0b1111: {
                     switch (funct3) {
                         case 0: return "fence";       //RV32I
                         case 0b1: return "fence.i";
                     }
 
-                } break;
+                } return error_u;
                 case 0b10011: {
                     switch (funct3) {
                         case 0: return "addi";       //RV32I
@@ -85,11 +90,11 @@ std::string get_command32_name(RV32_command command) {
                                 case 0:  return "srli";      //RV32I
                                 case 0b0100000: return "srai";      //RV32I
                             }
-                        } break;
+                        } return error_u;
                         case 0b110: return "ori";      //RV32I
                         case 0b111: return "andi";      //RV32I
                     }
-                }  break;
+                }  return error_u;
                 case 0b11011: {
                     switch (funct3) {
                         case 0: return "addiw";
@@ -97,20 +102,20 @@ std::string get_command32_name(RV32_command command) {
                             switch (funct7) {
                                 case 0: return "slliw";
                             }
-                        } break;
+                        } return error_u;
                         case 0b101: {
                             switch (funct7) {
                                 case 0:  return "srliw";
                                 case 0b0100000: return "sraiw";
                             }
-                        } break;
+                        } return error_u;
                     }
-                } break;
+                } return error_u;
                 case 0b1100111: {
                     switch (funct3) {
                         case 0: return "jalr";  //RV32I
                     }
-                } break;
+                } return error_u;
                 case 0b1110011: {
                     switch (funct3) {
                         case 0: {
@@ -118,7 +123,7 @@ std::string get_command32_name(RV32_command command) {
                                 case 0:   return "ecall";       //RV32I
                                 case 0b1: return "ebreak";      //RV32I
                             }
-                        } break;
+                        } return error_u;
                         case 0b1: return "CSRRW";
                         case 0b10: return "CSRRS";
                         case 0b11: return "CSRRC";
@@ -126,15 +131,15 @@ std::string get_command32_name(RV32_command command) {
                         case 0b110: return "CSRRSI";
                         case 0b111: return "CSRRCI";
                     }
-                }  break;
+                }  return error_u;
             }
-        } break;
+        } return error_u;
         case 'U': {
             switch (opcode) {
                 case 0b10111: return "auipc"; //RV32I
                 case 0b110111: return "lui";  //RV32I
             }
-        } break;
+        } return error_u;
         case 'S': {
             switch (opcode) {
                 case 0b100011: {
@@ -146,7 +151,7 @@ std::string get_command32_name(RV32_command command) {
                     }
                 }
             }
-        } break;
+        } return error_u;
         case 'R': {
             switch (opcode) {
                 case 0b110011: {
@@ -157,52 +162,52 @@ std::string get_command32_name(RV32_command command) {
                                 case 0b1:  return "mul";    //RV32M
                                 case 0b0100000: return "sub";      //RV32I
                             }
-                        } break;
+                        } return error_u;
                         case 0b1: {
                             switch (funct7) {
                                 case 0:  return "sll";      //RV32I
                                 case 0b1:  return "mulh";    //RV32M
                             }
-                        } break;
+                        } return error_u;
                         case 0b10: {
                             switch (funct7) {
                                 case 0:  return "slt";      //RV32I
                                 case 0b1:  return "mulshu";    //RV32M
                             }
-                        } break;
+                        } return error_u;
                         case 0b11: {
                             switch (funct7) {
                                 case 0:  return "sltu";      //RV32I
                                 case 0b1:  return "mulhu";    //RV32M
                             }
-                        } break;
+                        } return error_u;
                         case 0b100: {
                             switch (funct7) {
                                 case 0:  return "xor";      //RV32I
                                 case 0b1:  return "div";    //RV32M
                             }
-                        } break;
+                        } return error_u;
                         case 0b101: {
                             switch (funct7) {
                                 case 0:  return "srl";      //RV32I
                                 case 0b1:  return "divu";    //RV32M
                                 case 0b0100000: return "sra";      //RV32I
                             }
-                        } break;
+                        } return error_u;
                         case 0b110: {
                             switch (funct7) {
                                 case 0:  return "or";      //RV32I
                                 case 0b1:  return "rem";    //RV32M
                             }
-                        } break;
+                        } return error_u;
                         case 0b111: {
                             switch (funct7) {
                                 case 0:  return "and";      //RV32I
                                 case 0b1:  return "remu";    //RV32M
                             }
-                        } break;
-                    }
-                } break;
+                        } return error_u;
+                    } return error_u;
+                } return error_u;
                 case 0b111011: {
                     switch (funct3) {
                         case 0: {
@@ -210,23 +215,23 @@ std::string get_command32_name(RV32_command command) {
                                 case 0:  return "addw";
                                 case 0b0100000: return "subw";
                             }
-                        } break;
+                        } return error_u;
                         case 0b1: {
                             switch (funct7) {
                                 case 0:  return "sllw";
                             }
-                        } break;
+                        } return error_u;
                         case 0b101: {
                             switch (funct7) {
                                 case 0:  return "srlw";
                                 case 0b0100000: return "sraw";
                             }
-                        } break;
+                        } return error_u;
                     }
-                } break;
+                } return error_u;
 
-            }
-        } break;
+            } return error_u;
+        } return error_u;
         case 'B': {
             switch (opcode) {
                 case 0b1100011: {
@@ -238,19 +243,73 @@ std::string get_command32_name(RV32_command command) {
                         case 0b110: return "bltu"; //RV32I
                         case 0b111: return "bgeu"; //RV32I
                     }
-                }
-            }
-        } break;
+                } return error_u;
+            } return error_u;
+        } return error_u;
         case 'J': {
             switch (opcode) {
                 case 0b1101111: return "jal";  //RV32I
             }
-        } break;
+        } return error_u;
     }
-    return "unknown_command";
+    return error_u;
 }
 
-std::string get_command_registry(Elf32_Half reg) {
+std::string get_command32_s1(RV32_command command) {
+    switch (get_command32_type(command)) {
+        case 'R':
+            return get_command32_rd(command);
+        case 'I':
+            return get_command32_rd(command);
+        case 'S':
+            return get_command32_rs1(command);
+        case 'B':
+            return get_command32_rs1(command);
+        case 'U':
+            return get_command32_rd(command);
+        case 'J':
+            return get_command32_rd(command);
+    }
+    return "ERROR";
+}
+
+std::string get_command32_s2(RV32_command command) {
+    switch (get_command32_type(command)) {
+        case 'R':
+            return get_command32_rs1(command);
+        case 'I':
+            return get_command32_rs1(command);
+        case 'S':
+            return get_command32_rs2(command);
+        case 'B':
+            return get_command32_rs2(command);
+        case 'U':
+            return get_command32_immaU(command);
+        case 'J':
+            return get_command32_immaJ(command);
+    }
+    return "ERROR";
+}
+
+std::string get_command32_s3(RV32_command command) {
+    switch (get_command32_type(command)) {
+        case 'R':
+            return get_command32_rs2(command);
+        case 'I':
+            return get_command32_immaI(command);
+        case 'S':
+            return get_command32_immaS(command);
+        case 'B':
+            return get_command32_immaB(command);
+        case 'U':
+            return "cheburek";
+        case 'J':
+            return "cheburek";
+    }
+    return "ERROR";
+}
+
+std::string get_command32_registry(Elf32_Half reg) {
     switch (reg) {
         case 0: return "zero";
         case 1: return "ra";
@@ -273,15 +332,15 @@ std::string get_command_registry(Elf32_Half reg) {
 }
 
 std::string get_command32_rd(RV32_command command) {
-    return get_command_registry(get_rd(command));
+    return get_command32_registry(get32_rd(command));
 }
 
 std::string get_command32_rs1(RV32_command command) {
-    return get_command_registry(get_rs1(command));
+    return get_command32_registry(get32_rs1(command));
 }
 
 std::string get_command32_rs2(RV32_command command) {
-    return get_command_registry(get_rs2(command));
+    return get_command32_registry(get32_rs2(command));
 }
 
 std::string to_hex_string(Elf32_Word w){
@@ -296,13 +355,13 @@ std::string to_hex_string(Elf32_Word w){
 }
 
 std::string get_command32_immaI(RV32_command command) { // done
-    int32_t imma = (get_funct7(command) << 5) + get_rs2(command);
+    int32_t imma = (get32_funct7(command) << 5) + get32_rs2(command);
     if (imma & (1 << 11)) imma = -((imma - 1) ^ ((1 << 12) - 1));
     return std::to_string(imma);
 }
 
 std::string get_command32_immaS(RV32_command command) { // done?
-    int32_t imma = (get_funct7(command) << 5) + get_rd(command);
+    int32_t imma = (get32_funct7(command) << 5) + get32_rd(command);
     if (imma & (1 << 11)) imma = -((imma - 1) ^ ((1 << 12) - 1));
     return std::to_string(imma);
 }
@@ -321,9 +380,447 @@ std::string get_command32_immaJ(RV32_command command) { // done
 }
 
 std::string get_command32_immaB(RV32_command command) { // done
-    auto f7 = get_funct7(command);
-    auto rd = get_rd(command);
+    auto f7 = get32_funct7(command);
+    auto rd = get32_rd(command);
     int32_t imma = ((f7 >> 6) << 12) + ((f7 % (1 << 6))<< 5) + (((rd >> 1) % (1 << 4)) << 1) + ((rd % 2) << 11);
     if (imma & (1 << 12)) imma = -((imma - 1) ^ ((1 << 13) - 1));
     return std::to_string(imma);
+}
+
+RV32_command get16_opcode(RV32_command command) {
+    return command % (1 << 2); /// opcode - 1 - 0
+}
+
+RV32_command get16_rs2(RV32_command command) {
+    return (command >> 2) % (1 << 5); /// rs2 - 6 - 2
+}
+
+RV32_command get16_rs1(RV32_command command) {
+    return (command >> 7) % (1 << 5); /// rs1 - 11 - 7
+}
+
+RV32_command get16_funct4(RV32_command command) {
+    return (command >> 12) % (1 << 4); /// funct4 - 15 - 12
+}
+
+RV32_command get16_funct3(RV32_command command) {
+    return (command >> 13) % (1 << 3); /// funct4 - 15 - 13
+}
+
+RV32_command get16_funct6(RV32_command command) {
+    return (command >> 10) % (1 << 6); /// funct4 - 15 - 10
+}
+
+RV32_command get16_rs2_1(RV32_command command) {
+    return (command >> 2) % (1 << 3); /// rs2_1 - 4 - 2
+}
+
+RV32_command get16_rs1_1(RV32_command command) {
+    return (command >> 7) % (1 << 3); /// rs1_1 - 9 - 7
+}
+
+
+RV32_command get16_bit(RV32_command command, int start) {
+    return (command >> start) % 2;
+}
+
+RV32_command get16_bits(RV32_command command, int start, int end) {
+    return (command >> start) % (1 << (end - start + 1));
+}
+
+
+bool is16_nz(RV32_command command) {
+    return get16_bit(command, 12) > 0 || get16_bits(command,2, 6) > 0;
+}
+
+std::string get_command16_registry(Elf32_Half reg) {
+    return "a" + std::to_string(reg+8);
+}
+
+std::string get16_rs2_name(RV32_command command) {
+    return get_command32_registry(get16_rs2(command));
+}
+
+std::string get16_rs1_name(RV32_command command) {
+    return get_command32_registry(get16_rs1(command));
+}
+
+std::string get16_rs2_1_name(RV32_command command) {
+    return get_command16_registry(get16_rs2_1(command));
+}
+
+std::string get16_rs1_1_name(RV32_command command) {
+    return get_command16_registry(get16_rs1_1(command));
+}
+
+command16_name get_command16_name_e(RV32_command command) {
+    auto opcode = get16_opcode(command);
+    auto rs2 = get16_rs2(command);
+    auto rs1 = get16_rs1(command);
+    auto funct3 = get16_funct3(command);
+    auto funct4 = get16_funct4(command);
+    auto funct6 = get16_funct6(command);
+    auto rs1_1 = get16_rs1_1(command);
+    auto rs2_1 = get16_rs2_1(command);
+    if (command == 0) return c_illegal;
+    switch (opcode) {
+        case 0b0:
+            switch (funct3) {
+                case 0b0:
+                    if (is16_nz(command)) return c_addi4spn;
+                    else return c_res;
+                case 0b1:
+                    return c_float;
+                case 0b10:
+                    return c_lw;
+                case 0b11:
+                    return c_float;
+                case 0b101:
+                    return c_float;
+                case 0b110:
+                    return c_sw;
+                case 0b111:
+                    return c_float;
+            } return c_unknown;
+        case 0b1:
+            switch (funct3) {
+                case 0b0:
+                    if (rs1 == 0)
+                        if (is16_nz(command)) return c_hint;
+                        else return c_nop;
+                    else
+                    if (is16_nz(command)) return c_addi;
+                    else return c_hint;
+                case 0b1:
+                    return c_jal;
+                case 0b10:
+                    return c_li;
+                case 0b11:
+                    if (is16_nz(command))
+                        if (rs1 == 2) return c_addi16sp;
+                        else if (rs1 != 0) return c_lui;
+                        else return c_128;
+                    else return c_128;
+                case 0b100:
+                    switch (get16_bits(command, 10, 11)) {
+                        case 0b0:
+                            if (is16_nz(command))
+                                if (get16_bit(command, 12)) return c_srli;
+                                else return c_res;
+                            else return c_128;
+                        case 0b1:
+                            if (is16_nz(command))
+                                if (get16_bit(command, 12) == 1) return c_srai;
+                                else return c_res;
+                            else return c_128;
+                        case 0b10:
+                            return c_andi;
+                        case 0b11:
+                            if (get16_bit(command, 12) == 0) {
+                                switch (get16_bits(command, 5, 6)) {
+                                    case 0b0:
+                                        return c_sub;
+                                    case 0b1:
+                                        return c_xor;
+                                    case 0b10:
+                                        return c_or;
+                                    case 0b11:
+                                        return c_and;
+                                }
+                                return c_128;
+                            }
+                            else return c_128;
+                    }
+                case 0b101:
+                    return c_j;
+                case 0b110:
+                    return c_beqz;
+                case 0b111:
+                    return c_bnez;
+            } return c_unknown;
+        case 0b10: {
+            switch (funct3) {
+                case 0b0:
+                    if (is16_nz(command))
+                        if (get16_bit(command, 12) == 0) return c_slli;
+                        else return c_hse;
+                    else return c_128;
+                case 0b1:
+                    if (rs2 != 0) return c_float;
+                    else return c_128;
+                case 0b10:
+                    return c_lwsp;
+                case 0b11:
+                    if (rs2 != 0) return c_float;
+                    else return c_128;
+                case 0b100:
+                    if (get16_bit(command, 12)) {
+                        if (rs1 == 0) return c_res;
+                        else if (rs2 == 0) return c_jr;
+                        else return c_mv;
+                    } else {
+                        if (rs1 == 0) return c_ebreak;
+                        else if (rs2 == 0) return c_jalr;
+                        else return c_add;
+                    }
+                case 0b101:
+                    return c_float;
+                case 0b110:
+                    return c_swsp;
+                case 0b111:
+                    return c_float;
+            }
+        }
+    }
+
+}
+
+
+
+
+std::string get_command16_name(RV32_command command) {
+    switch (get_command16_name_e(command)) {
+        case c_unknown: return "unknown_command";
+        case c_128: return  "unknown_command";
+        case c_hint: return "unknown_command";
+        case c_hse: return "unknown_command";
+        case c_float: return "unknown_command";
+        case c_illegal: return "unknown_command";
+        case c_res: return "unknown_command";
+        case c_addi4spn: return "c.addi4spn";
+        case c_lw: return "c.lw";
+        case c_sw: return "c.sw";
+        case c_nop: return "c.nop";
+        case c_addi: return "c.addi";
+        case c_jal: return "c.jal";
+        case c_li: return "c.li";
+        case c_addi16sp: return "c.addi16sp";
+        case c_lui: return "c.lui";
+        case c_srli: return "c.srli";
+        case c_srai: return "c.srai";
+        case c_andi: return "c.andi";
+        case c_sub: return "c.sub";
+        case c_xor: return "c.xor";
+        case c_or: return "c.or";
+        case c_and: return "c.and";
+        case c_j: return "c.j";
+        case c_beqz: return "c.beqz";
+        case c_bnez: return "c.bnez";
+        case c_slli: return "c.slli";
+        case c_lwsp: return "c.lwsp";
+        case c_jr: return "c.jr";
+        case c_mv: return "c.mv";
+        case c_ebreak: return "c.ebreak";
+        case c_jalr: return "c.jalr";
+        case c_add: return "c.add";
+        case c_swsp: return "c.swsp";
+    }
+}
+
+command16_type get_command16_type(RV32_command command) {
+    switch (get_command16_name_e(command)) {
+        case c_unknown: return unknown_type16;
+        case c_128: return unknown_type16;
+        case c_hint: return unknown_type16;
+        case c_hse: return unknown_type16;
+        case c_float: return unknown_type16;
+        case c_illegal: return unknown_type16;
+        case c_res: return unknown_type16;
+        case c_addi4spn: return CIW;
+        case c_lw: return CL;
+        case c_sw: return CS;
+        case c_nop: return CI;
+        case c_addi: return CI;
+        case c_jal: return CJ;
+        case c_li: return CI;
+        case c_addi16sp: return CI;
+        case c_lui: return CI;
+        case c_srli: return CI;
+        case c_srai: return CI;
+        case c_andi: return CI;
+        case c_sub: return CA;
+        case c_xor: return CA;
+        case c_or: return CA;
+        case c_and: return CA;
+        case c_j: return CJ;
+        case c_beqz: return CB;
+        case c_bnez: return CB;
+        case c_slli: return CI;
+        case c_lwsp: return CI;
+        case c_jr: return CR;
+        case c_mv: return CR;
+        case c_ebreak: return CR;
+        case c_jalr: return CR;
+        case c_add: return CR;
+        case c_swsp: return CSS;
+    }
+}
+
+std::string get_command16_s1(RV16_command command) {
+    switch (get_command16_name_e(command)) {
+        case c_unknown: return "unknown_param";
+        case c_128: return  "unknown_param";
+        case c_hint: return "unknown_param";
+        case c_hse: return "unknown_param";
+        case c_float: return "unknown_param";
+        case c_illegal: return "unknown_param";
+        case c_res: return "unknown_param";
+        case c_addi4spn: return get16_rs2_1_name(command);
+        case c_lw: return get16_rs2_1_name(command);
+        case c_sw: return get16_rs1_1_name(command);
+        case c_nop: return get16_rs1_name(command); // nop == addi
+        case c_addi: return get16_rs1_name(command);
+        case c_jal: return std::to_string(
+                (get16_bit(command, 12)<<11) +
+                (get16_bit(command, 11)<<4) +
+                (get16_bits(command, 9, 10)<<8) +
+                (get16_bit(command, 8)<<10) +
+                (get16_bit(command, 7)<<6) +
+                (get16_bit(command, 6)<<7) +
+                (get16_bits(command, 3, 5)<<1) +
+                (get16_bit(command, 2)<<5));
+        case c_li: return get16_rs1_name(command);
+        case c_addi16sp: return get16_rs1_name(command); // 2
+        case c_lui: return get16_rs1_name(command);
+        case c_srli: return get16_rs1_1_name(command);
+        case c_srai: return get16_rs1_1_name(command);
+        case c_andi: return get16_rs1_1_name(command);
+        case c_sub: return get16_rs1_1_name(command);
+        case c_xor: return get16_rs1_1_name(command);
+        case c_or: return get16_rs1_1_name(command);
+        case c_and: return get16_rs1_1_name(command);
+        case c_j: return std::to_string(
+                    (get16_bit(command, 12)<<11) +
+                    (get16_bit(command, 11)<<4) +
+                    (get16_bits(command, 9, 10)<<8) +
+                    (get16_bit(command, 8)<<10) +
+                    (get16_bit(command, 7)<<6) +
+                    (get16_bit(command, 6)<<7) +
+                    (get16_bits(command, 3, 5)<<1) +
+                    (get16_bit(command, 2)<<5));
+        case c_beqz: return get16_rs1_1_name(command);;
+        case c_bnez: return get16_rs1_1_name(command);;
+        case c_slli: return get16_rs1_name(command);
+        case c_lwsp: return get16_rs1_name(command);
+        case c_jr: return get16_rs1_name(command);
+        case c_mv: return get16_rs1_name(command);
+        case c_ebreak: return "unknown_param"; //"c.ebreak";
+        case c_jalr: return get16_rs1_name(command);
+        case c_add: return get16_rs1_name(command);
+        case c_swsp: return get16_rs2_name(command);
+    }
+}
+
+std::string get_command16_s2(RV16_command command) {
+    switch (get_command16_name_e(command)) {
+        case c_unknown: return "unknown_param";
+        case c_128: return  "unknown_param";
+        case c_hint: return "unknown_param";
+        case c_hse: return "unknown_param";
+        case c_float: return "unknown_param";
+        case c_illegal: return "unknown_param";
+        case c_res: return "unknown_param";
+        case c_addi4spn: return "sp";
+        case c_lw: return get16_rs1_1_name(command);
+        case c_sw: return get16_rs2_1_name(command);
+        case c_nop: return get16_rs2_1_name(command); // nop == addi
+        case c_addi: return get16_rs2_1_name(command);
+        case c_jal: return "unknown_param";
+        case c_li: return std::to_string(
+                    (get16_bit(command, 12)<<5) +
+                    (get16_bits(command, 2, 6)));
+        case c_addi16sp: return get16_rs1_name(command);
+        case c_lui: return std::to_string(
+                    (get16_bit(command, 12)<<17) +
+                    (get16_bits(command, 2, 6)<<12));
+        case c_srli: return get16_rs1_1_name(command);
+        case c_srai: return get16_rs1_1_name(command);
+        case c_andi: return get16_rs1_1_name(command);
+        case c_sub: return get16_rs1_1_name(command);
+        case c_xor: return get16_rs1_1_name(command);
+        case c_or: return get16_rs1_1_name(command);
+        case c_and: return get16_rs1_1_name(command);
+        case c_j: return "unknown_param";
+        case c_beqz: return std::to_string(
+                    (get16_bit(command, 12)<<8) +
+                    (get16_bits(command, 10, 11)<<3) +
+                    (get16_bits(command, 5, 6)<<6) +
+                    (get16_bits(command, 3, 4)<<1) +
+                    (get16_bit(command, 2)<<5));
+        case c_bnez: return std::to_string(
+                    (get16_bit(command, 12)<<8) +
+                    (get16_bits(command, 10, 11)<<3) +
+                    (get16_bits(command, 5, 6)<<6) +
+                    (get16_bits(command, 3, 4)<<1) +
+                    (get16_bit(command, 2)<<5));
+        case c_slli: return get16_rs1_name(command);
+        case c_lwsp: return std::to_string(
+                    (get16_bit(command, 12)<<5) +
+                    (get16_bits(command, 4, 6)<<2) +
+                    (get16_bits(command, 2, 3)<<6));
+        case c_jr: return "unknown_param";
+        case c_mv: return get16_rs2_name(command);
+        case c_ebreak: return "unknown_param"; //"c.ebreak";
+        case c_jalr: return "unknown_param";
+        case c_add: return get16_rs1_name(command);
+        case c_swsp: return "unknown_param";;
+    }
+}
+
+std::string get_command16_s3(RV16_command command) {
+    switch (get_command16_name_e(command)) {
+        case c_unknown: return "unknown_param";
+        case c_128: return  "unknown_param";
+        case c_hint: return "unknown_param";
+        case c_hse: return "unknown_param";
+        case c_float: return "unknown_param";
+        case c_illegal: return "unknown_param";
+        case c_res: return "unknown_param";
+        case c_addi4spn: return std::to_string(
+                    (get16_bits(command, 11, 12)<<4) +
+                    (get16_bits(command, 7, 10)<<6) +
+                    (get16_bit(command, 6)<<2) +
+                    (get16_bit(command, 5)<<3));
+        case c_lw: return get16_rs1_1_name(command);
+        case c_sw: return get16_rs2_1_name(command);
+        case c_nop: return get16_rs2_1_name(command); // nop == addi
+        case c_addi: return get16_rs2_1_name(command);
+        case c_jal: return "unknown_param";
+        case c_li: return "unknown_param";
+        case c_addi16sp: return std::to_string(
+                    (get16_bit(command, 12)<<9) +
+                    (get16_bit(command, 6)<<4) +
+                    (get16_bit(command, 5)<<6) +
+                    (get16_bits(command, 3, 4)<<7) +
+                    (get16_bit(command, 2)<<5));
+        case c_lui: return "unknown_param";
+        case c_srli: return std::to_string(
+                    (get16_bit(command, 12)<<5) +
+                    (get16_bits(command, 2, 6)));
+        case c_srai: return std::to_string(
+                    (get16_bit(command, 12)<<5) +
+                    (get16_bits(command, 2, 6)));
+        case c_andi: return std::to_string(
+                    (get16_bit(command, 12)<<5) +
+                    (get16_bits(command, 2, 6)));
+        case c_sub: return get16_rs2_1_name(command);
+        case c_xor: return get16_rs2_1_name(command);
+        case c_or: return get16_rs2_1_name(command);
+        case c_and: return get16_rs2_1_name(command);
+        case c_j: return "unknown_param";
+        case c_beqz: return "unknown_param";
+        case c_bnez: return "unknown_param";
+        case c_slli: return std::to_string(
+                    (get16_bit(command, 12)<<5) +
+                    (get16_bits(command, 2, 6)));
+        case c_lwsp: return "unknown_param";
+        case c_jr: return "unknown_param";
+        case c_mv: return "unknown_param";
+        case c_ebreak: return "unknown_param"; //"c.ebreak";
+        case c_jalr: return "unknown_param";
+        case c_add: return get16_rs2_name(command);
+        case c_swsp: return std::to_string(
+                    (get16_bits(command, 9, 12)<<2) +
+                    (get16_bits(command, 7, 8)<<6));
+    }
 }

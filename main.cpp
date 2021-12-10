@@ -3,11 +3,11 @@
 #include "disassembler.h"
 
 int main(int argc, char *argv[]) {
-    char* in_name = "strong";
+    char* in_name = "strongC";
     char* out_file = "disassembled.txt";
     if (argc != 3) return 1;
-    in_name = argv[1];
-    out_file = argv[2];
+    //in_name = argv[1];
+    //out_file = argv[2];
 
     std::ifstream elf_file(in_name); //HelloWorld-AMDx86
 
@@ -44,8 +44,8 @@ int main(int argc, char *argv[]) {
 
     // Get .text
    // RV32_command
-    Elf32_Half text_length = text_header.sh_size / sizeof(RV32_command);
-    RV32_command text[text_length];
+    Elf32_Half text_length = text_header.sh_size / sizeof(RV16_command);
+    RV16_command text[text_length];
     //load_text(elf_file, text_header, text);
     elf_file.seekg(text_header.sh_offset, std::ios::beg);
     elf_file.read((char*)&text, text_header.sh_size);
@@ -55,52 +55,62 @@ int main(int argc, char *argv[]) {
 
     printf(".text\n");
     for (int text_index = 0; text_index < text_length; text_index++) {
-        Elf32_Off com_off = text_header.sh_addr + text_index *  sizeof(RV32_command);
-        auto command = text[text_index];
+        Elf32_Off com_off = text_header.sh_addr + text_index * sizeof(RV16_command);
+        RV32_command command = text[text_index];
 
         std::string label;  if (text_labels.count(com_off)) label = text_labels[com_off];
-        std::string command_name = get_command32_name(command);
+        std::string command_name = "unknown_command!";
         std::string s1 = "lol";
         std::string s2 = "kek";
         std::string s3 = "shlyopa";
 
-        if (get_command32_type(command) == 'R') {
-            s1 = get_command32_rd(command);
-            s2 = get_command32_rs1(command);
-            s3 = get_command32_rs2(command);
-        }
-        if (get_command32_type(command) == 'I') {
-            s1 = get_command32_rd(command);
-            s2 = get_command32_rs1(command);
-            s3 = get_command32_immaI(command);
-        }
-        if (get_command32_type(command) == 'S') {
-            s1 = get_command32_rs1(command);
-            s2 = get_command32_rs2(command);
-            s3 = get_command32_immaS(command);
-        }
-        if (get_command32_type(command) == 'B') {
-            s1 = get_command32_rs1(command);
-            s2 = get_command32_rs2(command);
-            s3 = get_command32_immaB(command);
-        }
-        if (get_command32_type(command) == 'U') {
-            s1 = get_command32_rd(command);
-            s2 = get_command32_immaU(command);
-        }
-        if (get_command32_type(command) == 'J') {
-            s1 = get_command32_rd(command);
-            s2 = get_command32_immaJ(command);
-        }
+        if (command % 4 == 0b11) {
+            command = (((RV32_command)text[++text_index])<<16) + (command);
+            command_name = get_command32_name(command);
+            s1 = get_command32_s1(command);
+            s2 = get_command32_s2(command);
+            s3 = get_command32_s3(command);
 
-        std::set <std::string> read_store = {"lb", "lh", "lw", "lbu", "lhu", "sb", "sh", "sw"};
+            std::set<std::string> read_store = {"lb", "lh", "lw", "lbu", "lhu", "sb", "sh", "sw"};
 
-        if (read_store.count(command_name)) {
-            printf("%08x %10s: %s %s, %s(%s)\n", com_off, label.c_str(), command_name.c_str(), s1.c_str(), s3.c_str(), s2.c_str());
-        } else if (get_command32_type(command) == 'U' || get_command32_type(command) == 'J') {
-            printf("%08x %10s: %s %s, %s\n", com_off, label.c_str(), command_name.c_str(), s1.c_str(), s2.c_str());
+            if (command_name == "unknown_command") {
+                printf("%08x %10s: %s\n", com_off, label.c_str(), command_name.c_str());
+            } else if (read_store.count(command_name)) {
+                printf("%08x %10s: %s %s, %s(%s)\n", com_off, label.c_str(), command_name.c_str(), s1.c_str(),
+                       s3.c_str(), s2.c_str());
+            } else if (get_command32_type(command) == 'U' || get_command32_type(command) == 'J') {
+                printf("%08x %10s: %s %s, %s\n", com_off, label.c_str(), command_name.c_str(), s1.c_str(), s2.c_str());
+            } else {
+                printf("%08x %10s: %s %s, %s, %s\n", com_off, label.c_str(), command_name.c_str(), s1.c_str(),
+                       s2.c_str(), s3.c_str());
+            }
         } else {
-            printf("%08x %10s: %s %s, %s, %s\n", com_off, label.c_str(), command_name.c_str(), s1.c_str(), s2.c_str(), s3.c_str());
+            command_name = get_command16_name(command);
+            //std::string type = get_command16_type(command);
+            s1 = get_command16_s1(command);
+            s2 = get_command16_s2(command);
+            s3 = get_command16_s3(command);
+
+            std::set<std::string> read_store = {"c.lw", "c.sw"};
+            std::set<std::string> no_param = {"c.ebreak"};
+            std::set<std::string> one_param = {"c.j", "c.jal", "c.jr", "c.jalr"};
+            std::set<std::string> two_param = {"c.li", "c.lui", "c.bnez", "c.beqz", "c.lwsp", "c.swsp"};
+
+            if (command_name == "unknown_command") {
+                printf("%08x %10s: %s\n", com_off, label.c_str(), command_name.c_str());
+            } else if (read_store.count(command_name)) {
+                printf("%08x %10s: %s %s, %s(%s)\n", com_off, label.c_str(), command_name.c_str(), s1.c_str(),
+                       s3.c_str(), s2.c_str());
+            } else if (no_param.count(command_name)) {
+                printf("%08x %10s: %s\n", com_off, label.c_str(), command_name.c_str());
+            } else if (one_param.count(command_name)) {
+                printf("%08x %10s: %s %s\n", com_off, label.c_str(), command_name.c_str(), s1.c_str());
+            } else if (two_param.count(command_name)) {
+                printf("%08x %10s: %s %s, %s\n", com_off, label.c_str(), command_name.c_str(), s1.c_str(), s2.c_str());
+            } else {
+                printf("%08x %10s: %s %s, %s, %s\n", com_off, label.c_str(), command_name.c_str(), s1.c_str(),
+                       s2.c_str(), s3.c_str());
+            }
         }
      //   printf("%08x\n", command);
 
