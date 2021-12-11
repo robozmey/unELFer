@@ -97,12 +97,6 @@ std::string get_command32_rd(command_t command);
 std::string get_command32_rs1(command_t command);
 std::string get_command32_rs2(command_t command);
 
-std::string get_command32_immaI(command_t command);
-std::string get_command32_immaS(command_t command);
-std::string get_command32_immaU(command_t command);
-std::string get_command32_immaJ(command_t command);
-std::string get_command32_immaB(command_t command);
-
 imma_t get_command32_imma(command_t command);
 
 enum command16_type {

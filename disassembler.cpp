@@ -419,39 +419,6 @@ std::string get_command32_rs2(command_t command) {
     return get_command32_registry(get32_rs2(command));
 }
 
-std::string get_command32_immaI(command_t command) { // done
-    int32_t imma = (get32_funct7(command) << 5) + get32_rs2(command);
-    if (imma & (1 << 11)) imma = -((imma - 1) ^ ((1 << 12) - 1));
-    return std::to_string(imma);
-}
-
-std::string get_command32_immaS(command_t command) { // done?
-    int32_t imma = (get32_funct7(command) << 5) + get32_rd(command);
-    if (imma & (1 << 11)) imma = -((imma - 1) ^ ((1 << 12) - 1));
-    return std::to_string(imma);
-}
-
-std::string get_command32_immaU(command_t command) { // done
-    int32_t imma = command >> 12 << 12;
-   // if (imma & (1 << 31)) imma = -((imma - 1) ^ ((1 << 31) - 1 + ((1 << 31))));
-    return std::to_string(imma);
-}
-
-std::string get_command32_immaJ(command_t command) { // done
-    auto x = command >> 12;
-    int32_t imma = ((x >> 19) << 20) + (((x >> 9) % (1 << 10)) << 1) + (((x >> 8) % 2) << 11) + ((x % (1 << 8)) << 12) ;
-   // if (imma & (1 << 20)) imma = -((imma - 1) ^ ((1 << 13) - 1));
-    return std::to_string(imma);
-}
-
-std::string get_command32_immaB(command_t command) { // done
-    auto f7 = get32_funct7(command);
-    auto rd = get32_rd(command);
-    int32_t imma = ((f7 >> 6) << 12) + ((f7 % (1 << 6))<< 5) + (((rd >> 1) % (1 << 4)) << 1) + ((rd % 2) << 11);
-    if (imma & (1 << 12)) imma = -((imma - 1) ^ ((1 << 13) - 1));
-    return std::to_string(imma);
-}
-
 imma_t get_command32_imma(command_t command) {
     switch (get_command32_type(command)) {
         case I: return (

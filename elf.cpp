@@ -9,21 +9,21 @@ std::string get_name(char* c) {
     return name;
 }
 
-void load_file_header(std::ifstream &elf_file, Elf32_Ehdr &file_header) {
-    elf_file.seekg(0, std::ios::beg);
-    elf_file.read((char *) &file_header, 64);
+void load_file_header(FILE* elf_file, Elf32_Ehdr &file_header) {
+    fseek(elf_file, 0, SEEK_SET);
+    fread((char *) &file_header, 64, 1, elf_file);
 }
 
-void load_section_headers(std::ifstream& elf_file, Elf32_Ehdr& file_header, Elf32_Shdr* section_headers) {
-    elf_file.seekg(file_header.e_shoff, std::ios::beg);
-    elf_file.read((char*)section_headers, file_header.e_shentsize * file_header.e_shnum);
+void load_section_headers(FILE* elf_file, Elf32_Ehdr& file_header, Elf32_Shdr* section_headers) {
+    fseek(elf_file, file_header.e_shoff, SEEK_SET);
+    fread((char*)section_headers, file_header.e_shentsize, file_header.e_shnum, elf_file);
 }
 
-std::string load_shstrtab(std::ifstream& elf_file, Elf32_Ehdr& file_header, Elf32_Shdr* section_headers) {
+std::string load_shstrtab(FILE*  elf_file, Elf32_Ehdr& file_header, Elf32_Shdr* section_headers) {
     auto shstrtab_header = section_headers[file_header.e_shstrndx];
-    elf_file.seekg(shstrtab_header.sh_offset, std::ios::beg);
+    fseek(elf_file, shstrtab_header.sh_offset, SEEK_SET);
     char shstrtab[shstrtab_header.sh_size];
-    elf_file.read((char*)&shstrtab, shstrtab_header.sh_size);
+    fread((char*)&shstrtab, shstrtab_header.sh_size, 1, elf_file);
     return std::string(shstrtab, shstrtab_header.sh_size);
 }
 
@@ -39,10 +39,10 @@ Elf32_Shdr& get_section_header(Elf32_Ehdr& file_header, Elf32_Shdr* section_head
     }
 };
 
-std::string load_strtab(std::ifstream& elf_file, Elf32_Ehdr &file_header, Elf32_Shdr& strtab_header) {
-    elf_file.seekg(strtab_header.sh_offset, std::ios::beg);
+std::string load_strtab(FILE*  elf_file, Elf32_Ehdr &file_header, Elf32_Shdr& strtab_header) {
+    fseek(elf_file, strtab_header.sh_offset, SEEK_SET);
     char strtab[strtab_header.sh_size];
-    elf_file.read((char*)&strtab, strtab_header.sh_size);
+    fread((char*)&strtab, strtab_header.sh_size, 1, elf_file);
     return std::string(strtab, strtab_header.sh_size);
 }
 

@@ -61,15 +61,15 @@ typedef int32_t imma_t;
 
 std::string get_name(char* c);
 
-void load_file_header(std::ifstream&, Elf32_Ehdr&);
+void load_file_header(FILE *, Elf32_Ehdr&);
 
-void load_section_headers(std::ifstream&, Elf32_Ehdr&, Elf32_Shdr*);
+void load_section_headers(FILE *, Elf32_Ehdr&, Elf32_Shdr*);
 
-std::string load_shstrtab(std::ifstream&, Elf32_Ehdr&, Elf32_Shdr*);
+std::string load_shstrtab(FILE *, Elf32_Ehdr&, Elf32_Shdr*);
 
 Elf32_Shdr& get_section_header(Elf32_Ehdr&, Elf32_Shdr*, std::string, std::string);
 
-std::string load_strtab(std::ifstream&, Elf32_Ehdr&, Elf32_Shdr&);
+std::string load_strtab(FILE *, Elf32_Ehdr&, Elf32_Shdr&);
 
 std::vector < Elf32_Sym > load_symtab(std::ifstream& elf_file, Elf32_Shdr& symtab_header);
 
