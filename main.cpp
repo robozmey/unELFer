@@ -4,7 +4,7 @@
 
 int main(int argc, char *argv[]) {
     char* in_name = "strongC";
-    char* out_file = "disassembled.txt";
+    char* out_file = "disassembled16.txt";
     if (argc != 3) return 1;
    // in_name = argv[1];
     //out_file = argv[2];
@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
                 printf("%08x %10s: %s\n", com_off, label.c_str(), command_name.c_str());
             } else if (read_store.count(command_name)) {
                 printf("%08x %10s: %s %s, %s(%s)\n", com_off, label.c_str(), command_name.c_str(), s1.c_str(), s3.c_str(), s2.c_str());
-            } else if (get_command32_type(command) == 'U' || get_command32_type(command) == 'J') {
+            } else if (get_command32_type(command) == U || get_command32_type(command) == J) {
                 printf("%08x %10s: %s %s, %s\n", com_off, label.c_str(), command_name.c_str(), s1.c_str(), s2.c_str());
             } else {
                 printf("%08x %10s: %s %s, %s, %s\n", com_off, label.c_str(), command_name.c_str(), s1.c_str(),

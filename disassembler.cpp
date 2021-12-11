@@ -1,5 +1,13 @@
 #include "disassembler.h"
 
+command_t get32_bit(command_t command, int start) {
+    return (command >> start) % 2;
+}
+
+command_t get32_bits(command_t command, int start, int end) {
+    return (command >> start) % (1 << (end - start + 1));
+}
+
 command_t get32_opcode(command_t command) {
     return command % (1 << 7); /// opcode - 6 - 0
 }
@@ -24,287 +32,355 @@ command_t get32_funct7(command_t command) {
     return (command >> 25) % (1 << 7);  /// funct3 - 31 - 25
 }
 
-std::map <Elf32_Word, char > command32_types_by_opcode = {{0b11, 'I'},
-                                                          {0b1111, 'I'},
-                                                          {0b10011, 'I'},
-                                                          {0b10111, 'U'},
-                                                          {0b11011, 'I'},
-                                                          {0b100011, 'S'},
-                                                          {0b110011, 'R'},
-                                                          {0b110111, 'U'},
-                                                          {0b111011, 'R'},
-                                                          {0b1100011, 'B'},
-                                                          {0b1100111, 'I'},
-                                                          {0b1101111, 'J'},
-                                                          {0b1110011, 'I'}};
+std::map <Elf32_Word, command32_type > command32_types_by_opcode = {{0b11, I},
+                                                          {0b1111, I},
+                                                          {0b10011, I},
+                                                          {0b10111, U},
+                                                          {0b11011, I},
+                                                          {0b100011, S},
+                                                          {0b110011, R},
+                                                          {0b110111, U},
+                                                          {0b111011, R},
+                                                          {0b1100011, B},
+                                                          {0b1100111, I},
+                                                          {0b1101111, J},
+                                                          {0b1110011, I}};
 
-char get_command32_type(command_t command) {
+command32_type get_command32_type(command_t command) {
     return command32_types_by_opcode[get32_opcode(command)];
 }
 
-std::string get_command32_name(command_t command) {
-    char command_type = get_command32_type(command);
+command32_name get_command32_name_e(command_t command) {
+    command32_type command_type = get_command32_type(command);
     auto opcode = get32_opcode(command);
     auto funct3 = get32_funct3(command);
     auto funct7 = get32_funct7(command);
 
-    auto error_128 = "128_command32";
-    auto error_f = "float_comand32";
-    auto error_r = "reserved_comand32";
-    auto error_u = "unknown_comand32";
-
     switch (command_type) {
-        case 'I': {
+        case I: {
             switch (opcode) {
                 case 0b11: {
                     switch (funct3) {
-                        case 0: return "lb";        //RV32I
-                        case 0b1: return "lh";      //RV32I
-                        case 0b10: return "lw";     //RV32I
-                        case 0b11: return "ld";
-                        case 0b100: return "lbu";      //RV32I
-                        case 0b101: return "lhu";      //RV32I
-                        case 0b110: return "lwu";
+                        case 0: return i_lb;        //RV32I
+                        case 0b1: return i_lh;      //RV32I
+                        case 0b10: return i_lw;     //RV32I
+                        case 0b11: return i_128;
+                        case 0b100: return i_lbu;      //RV32I
+                        case 0b101: return i_lhu;      //RV32I
+                        case 0b110: return i_128;
                     }
-                } return error_u;
+                } return i_unknown;
                 case 0b1111: {
                     switch (funct3) {
-                        case 0: return "fence";       //RV32I
-                        case 0b1: return "fence.i";
+                        case 0: return i_fence;       //RV32I
+                        case 0b1: return i_fence_i;
                     }
 
-                } return error_u;
+                } return i_unknown;
                 case 0b10011: {
                     switch (funct3) {
-                        case 0: return "addi";       //RV32I
+                        case 0: return i_addi;       //RV32I
                         case 0b1: {
                             switch (funct7) {
-                                case 0: return "slli";      //RV32I
+                                case 0: return i_slli;      //RV32I
                             }
                         } break;
-                        case 0b10: return "slti";       //RV32I
-                        case 0b11: return "sltiu";      //RV32I
-                        case 0b100: return "xori";      //RV32I
+                        case 0b10: return i_slti;       //RV32I
+                        case 0b11: return i_sltiu;      //RV32I
+                        case 0b100: return i_ori;      //RV32I
                         case 0b101: {
                             switch (funct7) {
-                                case 0:  return "srli";      //RV32I
-                                case 0b0100000: return "srai";      //RV32I
+                                case 0:  return i_srli;      //RV32I
+                                case 0b0100000: return i_srai;      //RV32I
                             }
-                        } return error_u;
-                        case 0b110: return "ori";      //RV32I
-                        case 0b111: return "andi";      //RV32I
+                        } return i_unknown;
+                        case 0b110: return i_ori;      //RV32I
+                        case 0b111: return i_andi;      //RV32I
                     }
-                }  return error_u;
+                }  return i_unknown;
                 case 0b11011: {
                     switch (funct3) {
-                        case 0: return "addiw";
+                        case 0: return i_128;
                         case 0b1:  {
                             switch (funct7) {
-                                case 0: return "slliw";
+                                case 0: return i_128;
                             }
-                        } return error_u;
+                        } return i_unknown;
                         case 0b101: {
                             switch (funct7) {
-                                case 0:  return "srliw";
-                                case 0b0100000: return "sraiw";
+                                case 0:  return i_128;
+                                case 0b0100000: return i_128;
                             }
-                        } return error_u;
+                        } return i_unknown;
                     }
-                } return error_u;
+                } return i_unknown;
                 case 0b1100111: {
                     switch (funct3) {
-                        case 0: return "jalr";  //RV32I
+                        case 0: return i_jalr;  //RV32I
                     }
-                } return error_u;
+                } return i_unknown;
                 case 0b1110011: {
                     switch (funct3) {
                         case 0: {
                             switch (funct7) {
-                                case 0:   return "ecall";       //RV32I
-                                case 0b1: return "ebreak";      //RV32I
+                                case 0:   return i_ecall;       //RV32I
+                                case 0b1: return i_ebreak;      //RV32I
                             }
-                        } return error_u;
-                        case 0b1: return "CSRRW";
-                        case 0b10: return "CSRRS";
-                        case 0b11: return "CSRRC";
-                        case 0b101: return "CSRRWI";
-                        case 0b110: return "CSRRSI";
-                        case 0b111: return "CSRRCI";
+                        } return i_unknown;
+                        case 0b1: return i_csrrw;
+                        case 0b10: return i_csrrs;
+                        case 0b11: return i_csrrc;
+                        case 0b101: return i_csrrwi;
+                        case 0b110: return i_csrrsi;
+                        case 0b111: return i_csrrci;
                     }
-                }  return error_u;
+                }  return i_unknown;
             }
-        } return error_u;
-        case 'U': {
+        } return i_unknown;
+        case U: {
             switch (opcode) {
-                case 0b10111: return "auipc"; //RV32I
-                case 0b110111: return "lui";  //RV32I
+                case 0b10111: return i_auipc; //RV32I
+                case 0b110111: return i_lui;  //RV32I
             }
-        } return error_u;
-        case 'S': {
+        } return i_unknown;
+        case S: {
             switch (opcode) {
                 case 0b100011: {
                     switch (funct3) {
-                        case 0: return "sb";      //RV32I
-                        case 0b1: return "sh";      //RV32I
-                        case 0b10: return "sw";      //RV32I
-                        case 0b11: return "sd";
+                        case 0: return i_sb;      //RV32I
+                        case 0b1: return i_sh;      //RV32I
+                        case 0b10: return i_sw;      //RV32I
+                        case 0b11: return i_128;
                     }
                 }
             }
-        } return error_u;
-        case 'R': {
+        } return i_unknown;
+        case R: {
             switch (opcode) {
                 case 0b110011: {
                     switch (funct3) {
                         case 0: {
                             switch (funct7) {
-                                case 0:  return "add";      //RV32I
-                                case 0b1:  return "mul";    //RV32M
-                                case 0b0100000: return "sub";      //RV32I
+                                case 0:  return i_add;      //RV32I
+                                case 0b1:  return m_mul;    //RV32M
+                                case 0b0100000: return i_sub;      //RV32I
                             }
-                        } return error_u;
+                        } return i_unknown;
                         case 0b1: {
                             switch (funct7) {
-                                case 0:  return "sll";      //RV32I
-                                case 0b1:  return "mulh";    //RV32M
+                                case 0:  return i_sll;      //RV32I
+                                case 0b1:  return m_mulh;    //RV32M
                             }
-                        } return error_u;
+                        } return i_unknown;
                         case 0b10: {
                             switch (funct7) {
-                                case 0:  return "slt";      //RV32I
-                                case 0b1:  return "mulshu";    //RV32M
+                                case 0:  return i_slt;      //RV32I
+                                case 0b1:  return m_mulhsu;    //RV32M
                             }
-                        } return error_u;
+                        } return i_unknown;
                         case 0b11: {
                             switch (funct7) {
-                                case 0:  return "sltu";      //RV32I
-                                case 0b1:  return "mulhu";    //RV32M
+                                case 0:  return i_sltu;      //RV32I
+                                case 0b1:  return m_mulhu;    //RV32M
                             }
-                        } return error_u;
+                        } return i_unknown;
                         case 0b100: {
                             switch (funct7) {
-                                case 0:  return "xor";      //RV32I
-                                case 0b1:  return "div";    //RV32M
+                                case 0:  return i_xor;      //RV32I
+                                case 0b1:  return m_div;    //RV32M
                             }
-                        } return error_u;
+                        } return i_unknown;
                         case 0b101: {
                             switch (funct7) {
-                                case 0:  return "srl";      //RV32I
-                                case 0b1:  return "divu";    //RV32M
-                                case 0b0100000: return "sra";      //RV32I
+                                case 0:  return i_srl;      //RV32I
+                                case 0b1:  return m_divu;    //RV32M
+                                case 0b0100000: return i_sra;      //RV32I
                             }
-                        } return error_u;
+                        } return i_unknown;
                         case 0b110: {
                             switch (funct7) {
-                                case 0:  return "or";      //RV32I
-                                case 0b1:  return "rem";    //RV32M
+                                case 0:  return i_or;      //RV32I
+                                case 0b1:  return m_rem;    //RV32M
                             }
-                        } return error_u;
+                        } return i_unknown;
                         case 0b111: {
                             switch (funct7) {
-                                case 0:  return "and";      //RV32I
-                                case 0b1:  return "remu";    //RV32M
+                                case 0:  return i_and;      //RV32I
+                                case 0b1:  return m_remu;    //RV32M
                             }
-                        } return error_u;
-                    } return error_u;
-                } return error_u;
+                        } return i_unknown;
+                    } return i_unknown;
+                } return i_unknown;
                 case 0b111011: {
                     switch (funct3) {
                         case 0: {
                             switch (funct7) {
-                                case 0:  return "addw";
-                                case 0b0100000: return "subw";
+                                case 0:  return i_128;
+                                case 0b0100000: return i_128;
                             }
-                        } return error_u;
+                        } return i_unknown;
                         case 0b1: {
                             switch (funct7) {
-                                case 0:  return "sllw";
+                                case 0:  return i_128;
                             }
-                        } return error_u;
+                        } return i_unknown;
                         case 0b101: {
                             switch (funct7) {
-                                case 0:  return "srlw";
-                                case 0b0100000: return "sraw";
+                                case 0:  return i_128;
+                                case 0b0100000: return i_128;
                             }
-                        } return error_u;
+                        } return i_unknown;
                     }
-                } return error_u;
+                } return i_unknown;
 
-            } return error_u;
-        } return error_u;
-        case 'B': {
+            } return i_unknown;
+        } return i_unknown;
+        case B: {
             switch (opcode) {
                 case 0b1100011: {
                     switch (funct3) {
-                        case 0: return "beq";      //RV32I
-                        case 0b1: return "bne";    //RV32I
-                        case 0b100: return "blt";  //RV32I
-                        case 0b101: return "bge";  //RV32I
-                        case 0b110: return "bltu"; //RV32I
-                        case 0b111: return "bgeu"; //RV32I
+                        case 0: return i_beq;      //RV32I
+                        case 0b1: return i_bne;    //RV32I
+                        case 0b100: return i_blt;  //RV32I
+                        case 0b101: return i_bge;  //RV32I
+                        case 0b110: return i_bltu; //RV32I
+                        case 0b111: return i_bgeu; //RV32I
                     }
-                } return error_u;
-            } return error_u;
-        } return error_u;
-        case 'J': {
+                } return i_unknown;
+            } return i_unknown;
+        } return i_unknown;
+        case J: {
             switch (opcode) {
-                case 0b1101111: return "jal";  //RV32I
+                case 0b1101111: return i_jal;  //RV32I
             }
-        } return error_u;
+        } return i_unknown;
     }
-    return error_u;
+    return i_unknown;
+}
+
+std::string get_command32_name(command_t command) {
+    switch (get_command32_name_e(command)) {
+        case i_unknown: return "unknown_command";
+  case              i_128: return "unknown_command";
+        case             i_hint: return "unknown_command";
+        case           i_hse: return "unknown_command";
+        case          i_float: return "unknown_command";
+        case            i_illegal: return "unknown_command";
+        case          i_res: return "unknown_command";
+        case         i_lui: return "lui";
+        case         i_auipc: return "auipc";
+        case        i_jal: return "jal";
+        case        i_jalr: return "jalr";
+        case        i_beq: return "beq";
+        case        i_bne: return "bne";
+        case       i_blt: return "blt";
+        case       i_bge: return "bge";
+        case       i_bltu: return "bltu";
+        case       i_bgeu: return "bgeu";
+        case      i_lb: return "lb";
+        case      i_lw: return "lw";
+        case      i_lh: return "lh";
+        case      i_lbu: return "lbu";
+        case      i_lhu: return "lhu";
+        case      i_sb: return "sb";
+        case      i_sw: return "sw";
+        case      i_sh: return "sh";
+        case      i_addi: return "addi";
+        case      i_slti: return "slti";
+        case      i_sltiu: return "sltiu";
+        case      i_xori: return "xori";
+        case      i_ori: return "ori";
+        case      i_andi: return "andi";
+        case     i_slli: return "slli";
+        case     i_srli: return "srli";
+        case      i_srai: return "srai";
+        case      i_add: return "add";
+        case      i_sub: return "sub";
+        case      i_sll: return "sll";
+        case      i_slt: return "slt";
+        case      i_sltu: return "sltu";
+        case     i_xor: return "xor";
+        case      i_srl: return "srl";
+        case      i_sra: return "sra";
+        case      i_or: return "or";
+        case      i_and: return "and";
+        case      i_fence: return "fence";
+        case      i_fence_i: return "fence.i";
+        case     i_ecall: return "ecall";
+        case      i_ebreak: return "ebreak";
+        case       i_csrrw: return "csrrw";
+        case      i_csrrs: return "csrrs";
+        case       i_csrrc: return "csrrc";
+        case      i_csrrwi: return "csrrwi";
+        case      i_csrrsi: return "csrrsi";
+        case       i_csrrci: return "csrrci";
+        case       m_mul: return "mul";
+        case      m_mulh: return "mulh";
+        case      m_mulhsu: return "mulhsu";
+        case      m_mulhu: return "mulhu";
+        case      m_div: return "div";
+        case      m_divu: return "divu";
+        case      m_rem: return "rem";
+        case      m_remu: return "remu";
+    }
 }
 
 std::string get_command32_s1(command_t command) {
     switch (get_command32_type(command)) {
-        case 'R':
+        case R:
             return get_command32_rd(command);
-        case 'I':
+        case I:
             return get_command32_rd(command);
-        case 'S':
+        case S:
             return get_command32_rs2(command);
-        case 'B':
+        case B:
             return get_command32_rs1(command);
-        case 'U':
+        case U:
             return get_command32_rd(command);
-        case 'J':
+        case J:
             return get_command32_rd(command);
+        case unknown_type32:
+            break;
     }
     return "ERROR";
 }
 
 std::string get_command32_s2(command_t command) {
     switch (get_command32_type(command)) {
-        case 'R':
+        case R:
             return get_command32_rs1(command);
-        case 'I':
+        case I:
             return get_command32_rs1(command);
-        case 'S':
+        case S:
             return get_command32_rs1(command);
-        case 'B':
+        case B:
             return get_command32_rs2(command);
-        case 'U':
-            return get_command32_immaU(command);
-        case 'J':
-            return get_command32_immaJ(command);
+        case U:
+            return std::to_string(get_command32_imma(command));
+        case J:
+            return std::to_string(get_command32_imma(command));
+        case unknown_type32:
+            break;
     }
     return "ERROR";
 }
 
 std::string get_command32_s3(command_t command) {
     switch (get_command32_type(command)) {
-        case 'R':
+        case R:
             return get_command32_rs2(command);
-        case 'I':
-            return get_command32_immaI(command);
-        case 'S':
-            return get_command32_immaS(command);
-        case 'B':
-            return get_command32_immaB(command);
-        case 'U':
+        case I:
+            return std::to_string(get_command32_imma(command));
+        case S:
+            return std::to_string(get_command32_imma(command));
+        case B:
+            return std::to_string(get_command32_imma(command));
+        case U:
             return "cheburek";
-        case 'J':
+        case J:
             return "cheburek";
+        case unknown_type32:
+            break;
     }
     return "ERROR";
 }
@@ -343,17 +419,6 @@ std::string get_command32_rs2(command_t command) {
     return get_command32_registry(get32_rs2(command));
 }
 
-std::string to_hex_string(Elf32_Word w){
-    static const char* digits = "0123456789abcdef";
-    size_t hex_len = sizeof (Elf32_Word);
-    std::string rc(hex_len,'0');
-    for (size_t i=0, j=(hex_len-1)*4 ; i<hex_len; ++i,j-=4)
-        rc[i] = digits[(w>>j) & 0x0f];
-    while (rc.size() > 1 && rc[0] == '0')
-        rc.erase(0, 1);
-    return std::to_string(w);//return rc;
-}
-
 std::string get_command32_immaI(command_t command) { // done
     int32_t imma = (get32_funct7(command) << 5) + get32_rs2(command);
     if (imma & (1 << 11)) imma = -((imma - 1) ^ ((1 << 12) - 1));
@@ -389,40 +454,34 @@ std::string get_command32_immaB(command_t command) { // done
 
 imma_t get_command32_imma(command_t command) {
     switch (get_command32_type(command)) {
-        case 'I': { // done
-            int32_t imma = (get32_funct7(command) << 5) + get32_rs2(command);
-            if (imma & (1 << 11)) imma = -((imma - 1) ^ ((1 << 12) - 1));
-            return imma;
-        }
-
-        case 'S': { // done
-            int32_t imma = (get32_funct7(command) << 5) + get32_rd(command);
-            if (imma & (1 << 11)) imma = -((imma - 1) ^ ((1 << 12) - 1));
-            return (imma);
-        }
-
-        case 'U': { // done
-            int32_t imma = command >> 12 << 12;
+        case I: return (
+                    -(get32_bit(command, 31)<<11)+
+                    get32_bits(command, 20, 30)
+                );
+        case S: return (
+                    -(get32_bit(command, 31)<<11) +
+                    (get32_bits(command, 25, 30)<<5) +
+                    (get32_bits(command, 7, 11))
+            );
+        case U: return (
+                    -(get32_bit(command, 31)<<31)+
+                    (get32_bits(command, 12, 30)<<12)
+                );
             // if (imma & (1 << 31)) imma = -((imma - 1) ^ ((1 << 31) - 1 + ((1 << 31))));
-            return (imma);
-        }
 
-        case 'J': { // done
-            auto x = command >> 12;
-            int32_t imma =
-                    ((x >> 19) << 20) + (((x >> 9) % (1 << 10)) << 1) + (((x >> 8) % 2) << 11) + ((x % (1 << 8)) << 12);
-            // if (imma & (1 << 20)) imma = -((imma - 1) ^ ((1 << 13) - 1));
-            return (imma);
-        }
+        case J: return (
+                    -(get32_bit(command, 31)<<20) +
+                    (get32_bits(command, 21, 30)<<1) +
+                    (get32_bit(command, 20)<<11) +
+                    (get32_bits(command, 12, 19)<<12)
+                );
 
-        case 'B': { // done
-            auto f7 = get32_funct7(command);
-            auto rd = get32_rd(command);
-            int32_t imma =
-                    ((f7 >> 6) << 12) + ((f7 % (1 << 6)) << 5) + (((rd >> 1) % (1 << 4)) << 1) + ((rd % 2) << 11);
-            if (imma & (1 << 12)) imma = -((imma - 1) ^ ((1 << 13) - 1));
-            return (imma);
-        }
+        case B: return (
+                    -(get32_bit(command, 31)<<12) +
+                    (get32_bits(command, 25, 30)<<5) +
+                    (get32_bits(command, 8, 11)<<1) +
+                    (get32_bit(command, 7)<<11)
+                );
     }
 }
 
@@ -726,7 +785,7 @@ imma_t get_command16_imma(command_t command) {
                     (get16_bits(command, 3, 4)<<7) +
                     (get16_bit(command, 2)<<5)); // 2
         case c_lui: return (
-                    (get16_bit(command, 12)<<17) +
+                    -(get16_bit(command, 12)<<17) +
                     (get16_bits(command, 2, 6)<<12));
         case c_srli: return (
                     (get16_bit(command, 12)<<5) +
@@ -735,7 +794,7 @@ imma_t get_command16_imma(command_t command) {
                     (get16_bit(command, 12)<<5) +
                     (get16_bits(command, 2, 6)));
         case c_andi: return (
-                    (get16_bit(command, 12)<<5) +
+                    -(get16_bit(command, 12)<<5) +
                     (get16_bits(command, 2, 6)));
         case c_j: return (
                     -(get16_bit(command, 12)<<11) +
@@ -768,6 +827,44 @@ imma_t get_command16_imma(command_t command) {
         case c_swsp: return (
                     (get16_bits(command, 9, 12)<<2) +
                     (get16_bits(command, 7, 8)<<6));
+        case c_unknown:
+            break;
+        case c_128:
+            break;
+        case c_hint:
+            break;
+        case c_hse:
+            break;
+        case c_float:
+            break;
+        case c_illegal:
+            break;
+        case c_res:
+            break;
+        case c_lw:
+            break;
+        case c_sw:
+            break;
+        case c_nop:
+            break;
+        case c_sub:
+            break;
+        case c_xor:
+            break;
+        case c_or:
+            break;
+        case c_and:
+            break;
+        case c_jr:
+            break;
+        case c_mv:
+            break;
+        case c_ebreak:
+            break;
+        case c_jalr:
+            break;
+        case c_add:
+            break;
     }
     return 111111;
 }
