@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
     // Get .strtab
     std::string strtab;
     try {
-        auto strtab = load_strtab(elf_file, file_header, strtab_header);
+        strtab = load_strtab(elf_file, file_header, strtab_header);
     } catch (...) {
         std::cout << "ERROR: cannot read section .strtab" << std::endl;
         fclose(elf_file);
@@ -78,7 +78,6 @@ int main(int argc, char *argv[]) {
     }
     auto st_names = get_st_names(symtab_header, symtab, strtab);
     auto text_labels = get_text_labels(symtab, st_names);
-
 
     // Get .text
     Elf32_Half text_length = text_header.sh_size / sizeof(RV16_command);
