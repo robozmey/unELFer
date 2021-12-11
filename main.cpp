@@ -100,6 +100,8 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
+    std::set<std::string> jump_commands = {"jal", "beq", "bne", "btl", "bge", "btlu", "bgeu", "c.j", "c.jal", "c.bnez", "c.beqz"};
+
     try {
         // Get unnamed labels
         std::vector<command_t> jumps;
@@ -111,13 +113,11 @@ int main(int argc, char *argv[]) {
             if (command % 4 == 0b11) {
                 command = (((command_t) text[++text_index]) << 16) + (command);
                 command_name = get_command32_name(command);
-                std::set<std::string> jump_commands = {"jal", "beq", "bne", "btl", "bge", "btlu", "bgeu"};
                 if (jump_commands.count(command_name)) {
                     jumps.push_back(com_off + get_command32_imma(command));
                 }
             } else {
                 command_name = get_command16_name(command);
-                std::set<std::string> jump_commands = {"c.j", "c.jal", "c.bnez", "c.beqz"};
                 if (jump_commands.count(command_name)) {
                     jumps.push_back(com_off + get_command16_imma(command));
                 }
@@ -154,8 +154,14 @@ int main(int argc, char *argv[]) {
                 s2 = get_command32_s2(command);
                 s3 = get_command32_s3(command);
 
-                std::set<std::string> read_store = {"lb", "lh", "lw", "lbu", "lhu", "sb", "sh", "sw"};
+                if (jump_commands.count(command_name)) {
+                    if (get_command32_type(command) == U || get_command32_type(command) == J)
+                        s2 = text_labels[com_off + get_command32_imma(command)];
+                    else
+                        s3 = text_labels[com_off + get_command32_imma(command)];
+                }
 
+                std::set<std::string> read_store = {"lb", "lh", "lw", "lbu", "lhu", "sb", "sh", "sw"};
                 if (command_name == "unknown_command") {
                     fprintf(out_file, "%08x %10s: %s\n", com_off, label.c_str(), command_name.c_str());
                 } else if (read_store.count(command_name)) {
@@ -180,6 +186,16 @@ int main(int argc, char *argv[]) {
                 std::set<std::string> no_param = {"c.ebreak", "c.nop"};
                 std::set<std::string> one_param = {"c.j", "c.jal", "c.jr", "c.jalr"};
                 std::set<std::string> two_param = {"c.li", "c.lui", "c.bnez", "c.beqz", "c.lwsp", "c.swsp", "c.mv"};
+
+
+                if (jump_commands.count(command_name)) {
+                    if (one_param.count(command_name))
+                        s1 = text_labels[com_off + get_command16_imma(command)];
+                    else if (two_param.count(command_name))
+                        s2 = text_labels[com_off + get_command16_imma(command)];
+                    else
+                        s3 = text_labels[com_off + get_command16_imma(command)];
+                }
 
                 if (command_name == "unknown_command") {
                     fprintf(out_file, "%08x %10s: %s\n", com_off, label.c_str(), command_name.c_str());
