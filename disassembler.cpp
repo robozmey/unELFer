@@ -621,7 +621,7 @@ command16_name get_command16_name_e(command_t command) {
                     if (rs2 != 0) return c_float;
                     else return c_128;
                 case 0b100:
-                    if (get16_bit(command, 12)) {
+                    if (get16_bit(command, 12) == 0) {
                         if (rs1 == 0) return c_res;
                         else if (rs2 == 0) return c_jr;
                         else return c_mv;

@@ -179,7 +179,7 @@ int main(int argc, char *argv[]) {
                 std::set<std::string> read_store = {"c.lw", "c.sw"};
                 std::set<std::string> no_param = {"c.ebreak", "c.nop"};
                 std::set<std::string> one_param = {"c.j", "c.jal", "c.jr", "c.jalr"};
-                std::set<std::string> two_param = {"c.li", "c.lui", "c.bnez", "c.beqz", "c.lwsp", "c.swsp"};
+                std::set<std::string> two_param = {"c.li", "c.lui", "c.bnez", "c.beqz", "c.lwsp", "c.swsp", "c.mv"};
 
                 if (command_name == "unknown_command") {
                     fprintf(out_file, "%08x %10s: %s\n", com_off, label.c_str(), command_name.c_str());
